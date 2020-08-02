@@ -75,7 +75,9 @@
         "locale": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "__functional_base_03": "cpp",
+        "filesystem": "cpp"
     },
 
     //include for emsripten.h

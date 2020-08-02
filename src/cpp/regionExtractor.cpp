@@ -12,18 +12,7 @@ namespace zlib{
     }
 };
 
-typedef unsigned char u8;
-typedef unsigned int u32;
-typedef unsigned long u64;
-
-
-//Big edian u8 array to u32 conversion helper function
-u32 u8Atou32(u8 const* location, u8 numBytes){
-    u32 rv = 0;
-    for(u8 i = 0; i < numBytes; i++)
-        rv += location[i] << (8 * (numBytes - i - 1));
-    return rv;
-}
+#include"byteUtils.h"
 
 class Chunk{
     private:
@@ -52,7 +41,7 @@ Chunk::Chunk(u8* location, u32 offset_, u8 sectorCount_)
     chunkDataBufferLen = 100000; //100 Kb initially
     chunkDataBuffer = (u8*)std::malloc(sizeof(u8) * chunkDataBufferLen);
     uncompressLoop:{
-        int status = zlib::uncompress(chunkDataBuffer, &chunkDataBufferLen, location + 5, chunkLength - 1);
+        int status = zlib::uncompress(chunkDataBuffer, (unsigned long int*)(&chunkDataBufferLen), location + 5, chunkLength - 1);
         switch(status){
             case Z_OK:
                 break;

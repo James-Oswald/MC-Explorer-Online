@@ -38,6 +38,19 @@
             "windows": {
                 "command": "./dbg/KillServer.bat"
             }
-        }
+        },
+        {
+            "type": "shell",
+            "label": "C/C++: g++.exe build",
+            "command": "C:\\msys64\\mingw64\\bin\\g++.exe -g -o .\\src\\cpp\\test.exe .\\src\\cpp\\regionExtractor.cpp -lz",
+            "options": {
+              "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+              "kind": "build",
+              "isDefault": true
+            }
+          }
     ]
 }

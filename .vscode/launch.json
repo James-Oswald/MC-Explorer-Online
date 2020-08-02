@@ -1,11 +1,12 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "",
+            "program": "${workspaceFolder}/src/cpp/test.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/src/cpp",
@@ -19,7 +20,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "preLaunchTask": "C/C++: g++.exe build"
         },
         {
             "type": "chrome",

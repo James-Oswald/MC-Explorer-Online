@@ -27,16 +27,14 @@ u32 u8Atou32(u8 const* location, u8 numBytes){
 
 class Chunk{
     private:
-        u32 offset;
-        u8 sectorCount;
-        u64 chunkDataBufferLen;
-        u8* chunkDataBuffer;
-        enum CompressionMethod{
+        enum Compression{
             GZip = 1,
             Zlib = 2
         };
-        friend class Region;
-        void free();
+        u32 offset;
+        u8 sectorCount;
+        u64 chunkDataBufferLen;
+        std::shared_ptr<u8> chunkDataBuffer;
     public:
         Chunk(u8* location, u32 offset, u8 sectorCount);
         ~Chunk();
@@ -50,15 +48,15 @@ Chunk::Chunk(u8* location, u32 offset_, u8 sectorCount_)
     if(compressionType != Zlib)
         throw std::runtime_error("Chunk Data Compression must be of type Zlib!");
     chunkDataBufferLen = 100000; //100 Kb initially
-    chunkDataBuffer = (u8*)std::malloc(sizeof(u8) * chunkDataBufferLen);
+    chunkDataBuffer = std::shared_ptr<u8>((u8*)std::malloc(chunkDataBufferLen * sizeof(u8)));
     uncompressLoop:{
-        int status = zlib::uncompress(chunkDataBuffer, &chunkDataBufferLen, location + 5, chunkLength - 1);
+        int status = zlib::uncompress(chunkDataBuffer.get(), &chunkDataBufferLen, location + 5, chunkLength - 1);
         switch(status){
             case Z_OK:
                 break;
             case Z_BUF_ERROR:
                 chunkDataBufferLen *= 2;
-                chunkDataBuffer = (u8*)std::realloc(chunkDataBuffer, sizeof(u8) * chunkDataBufferLen); 
+                chunkDataBuffer.reset((u8*)std::realloc(chunkDataBuffer.get(), sizeof(u8) * chunkDataBufferLen)); 
                 goto uncompressLoop;
             case Z_DATA_ERROR:
                 throw std::runtime_error("Chunk Data Corrupted at offset " + std::to_string(offset_));
@@ -67,22 +65,16 @@ Chunk::Chunk(u8* location, u32 offset_, u8 sectorCount_)
                 throw std::runtime_error("Unexpected uncompression Failure");
         }
     }
-    chunkDataBuffer = (u8*)std::realloc(chunkDataBuffer, sizeof(u8) * chunkDataBufferLen);
-}
-
-void Chunk::free(){
-    std::free(chunkDataBuffer);
+    chunkDataBuffer.reset((u8*)std::realloc(chunkDataBuffer.get(), sizeof(u8) * chunkDataBufferLen));
 }
 
 Chunk::~Chunk(){
 }
 
 void Chunk::toFile(){
-    std::string filename = "./chunks/chunk" + std::to_string(offset) + ".nbt";
+    std::string filename = "chunk" + std::to_string(offset) + ".nbt";
     FILE* outputFile = fopen(filename.c_str(), "wb");
-    if(outputFile == NULL)
-        throw std::runtime_error("Failed to write chunk with offset " + std::to_string(offset));
-    fwrite(chunkDataBuffer ,sizeof(u8), chunkDataBufferLen, outputFile);
+    fwrite(chunkDataBuffer.get() ,sizeof(u8), chunkDataBufferLen, outputFile);
     fclose(outputFile);
 }
 
@@ -90,7 +82,7 @@ class Region{
     private:
         static const u32 sectorSize = 4096;
         u64 regionDataSize;
-        u8* regionData;
+        std::shared_ptr<u8> regionData;
         std::vector<Chunk> chunks;
     public:
         Region(const std::string& pathName);
@@ -105,24 +97,25 @@ Region::Region(const std::string& pathName){
     fseek(regionFile, 0, SEEK_END);
     regionDataSize = ftell(regionFile);
     rewind(regionFile);
-    regionData = (u8*)malloc(sizeof(u8) * regionDataSize);
-    u32 sizeRead = fread(regionData, sizeof(u8), regionDataSize, regionFile);
+    regionData = std::shared_ptr<u8>((u8*)std::malloc(sizeof(u8) * regionDataSize));
+    u32 sizeRead = fread(regionData.get(), sizeof(u8), regionDataSize, regionFile);
     fclose(regionFile);
     if(sizeRead == 0)
         throw std::runtime_error("Failed to read file \"" + pathName + "\"");
     chunks = std::vector<Chunk>();
     for(u32 i = 0; i < sectorSize; i += 4){
-        u32 chunkOffset = u8Atou32(regionData + i, 3);
-        u8 sectorCount = regionData[i + 3];
+        u32 chunkOffset = u8Atou32(regionData.get() + i, 3);
+        u8 sectorCount = regionData.get()[i + 3];
         if(chunkOffset != 0)
-            chunks.push_back(Chunk(regionData + chunkOffset * sectorSize, chunkOffset, sectorCount));
+            try{
+                chunks.push_back(Chunk(regionData.get() + chunkOffset * sectorSize, chunkOffset, sectorCount));
+            }catch(std::exception& e){
+                std::cout<<e.what()<<"\n";
+            }
     }
 }
 
 Region::~Region(){
-    free(regionData);
-    for(u32 i = 0; i < chunks.size(); i++)
-        chunks[i].free();
 }
 
 std::vector<Chunk> Region::getChunks(){
@@ -136,9 +129,7 @@ int main(){
     ///*
     Region r("r.0.0.mca");
     std::vector<Chunk> c = r.getChunks();
-    for(u32 i = 0; i < c.size(); i++){
-        c[i].toFile();
-    }
+    c[3].toFile();
     //*/
 
     return 0;
